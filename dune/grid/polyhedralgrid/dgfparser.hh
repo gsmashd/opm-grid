@@ -12,7 +12,7 @@
 
 #include <dune/grid/polyhedralgrid/grid.hh>
 
-#include <opm/parser/eclipse/Parser/ParseMode.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
@@ -148,8 +148,8 @@ namespace Dune
       if( !DuneGridFormatParser::isDuneGridFormat( input ) )
       {
         Opm::Parser parser;
-        Opm::ParseMode parseMode;
-        const auto deck = parser.parseFile(filename, parseMode);
+        Opm::ParseContext parseContext;
+        const auto deck = parser.parseFile(filename, parseContext);
         std::vector<double> porv;
 
         grid_ = new Grid( deck, porv );
