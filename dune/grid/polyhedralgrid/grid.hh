@@ -1311,6 +1311,72 @@ namespace Dune
           {
             const int a = grid_.face_cells[ 2*face     ];
             const int b = grid_.face_cells[ 2*face + 1 ];
+
+            assert( a >=0 || b >=0 );
+
+            if( grid_.face_areas[ face ] < 0 )
+              std::abort();
+
+            Coordinate centerDiff( 0 );
+            if( b >= 0 )
+            {
+              for( int d=0; d<dim; ++d )
+              {
+                centerDiff[ d ] = grid_.cell_centroids[ b*dim + d ];
+              }
+            }
+            else
+            {
+              for( int d=0; d<dim; ++d )
+              {
+                centerDiff[ d ] = grid_.face_centroids[ face*dim + d ];
+              }
+            }
+
+            if( a >= 0 )
+            {
+              for( int d=0; d<dim; ++d )
+              {
+                centerDiff[ d ] -= grid_.cell_centroids[ a*dim + d ];
+              }
+            }
+            else
+            {
+              for( int d=0; d<dim; ++d )
+              {
+                centerDiff[ d ] -= grid_.face_centroids[ face*dim + d ];
+              }
+            }
+
+            Coordinate normal( 0 );
+            for( int d=0; d<dim; ++d )
+            {
+              normal[ d ] = grid_.face_normals[ face*dim + d ];
+            }
+
+            if( normal.two_norm() < 1e-10 )
+              std::abort();
+
+            if( centerDiff.two_norm() < 1e-10 )
+              std::abort();
+
+            // if diff and normal point in different direction, flip faces
+            if( centerDiff * normal < 0 )
+            {
+              grid_.face_cells[ 2*face     ] = b;
+              grid_.face_cells[ 2*face + 1 ] = a;
+            }
+          }
+        }
+
+        // check face normals
+        {
+          typedef Dune::FieldVector< double, dim > Coordinate;
+          const int faces = grid_.number_of_faces;
+          for( int face = 0 ; face < faces; ++face )
+          {
+            const int a = grid_.face_cells[ 2*face     ];
+            const int b = grid_.face_cells[ 2*face + 1 ];
             Coordinate centerDiff( 0 );
             Coordinate normal( 0 );
             for( int d=0; d<dim; ++d )
