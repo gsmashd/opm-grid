@@ -53,96 +53,100 @@ else()
       message( " |                                                                                 |")
       message( " \\---------------------------------------------------------------------------------/")
       message( "" )
-			#message( FATAL_ERROR "Could not find OPM Macros")
-			set(USE_OPM_BUILDSYSTEM FALSE)
+      #message( FATAL_ERROR "Could not find OPM Macros")
+      set(USE_OPM_BUILDSYSTEM FALSE)
    endif()
 endif()
 
 if(USE_OPM_BUILDSYSTEM)
 # not the same location as most of the other projects? this hook overrides
-	macro (dir_hook)
-	endmacro (dir_hook)
+  macro (dir_hook)
+  endmacro (dir_hook)
 
 # project information is in dune.module. Read this file and set variables.
 # we cannot generate dune.module since it is read by dunecontrol before
 # the build starts, so it makes sense to keep the data there then.
-	include (OpmInit)
+  include (OpmInit)
 
 # list of prerequisites for this particular project; this is in a
 # separate file (in cmake/Modules sub-directory) because it is shared
 # with the find module
-	include (${project}-prereqs)
+  include (${project}-prereqs)
 
 # read the list of components from this file (in the project directory);
 # it should set various lists with the names of the files to include
-	include (CMakeLists_files.cmake)
+  include (CMakeLists_files.cmake)
 
-	macro (config_hook)
-		opm_need_version_of ("dune-common")
-		opm_need_version_of ("dune-grid")
-		find_file(_HAVE_DUNE_GRID_CHECKS checkpartition.cc HINTS ${dune-grid_INCLUDE_DIR}
-			PATH_SUFFIXES dune/grid/test)
-		if(_HAVE_DUNE_GRID_CHECKS)
-			set(HAVE_DUNE_GRID_CHECKS 1)
-		else(_HAVE_DUNE_GRID_CHECK)
-			set(HAVE_DUNE_GRID_CHECKS 0)
-		endif(_HAVE_DUNE_GRID_CHECKS)
-		list (APPEND ${project}_CONFIG_IMPL_VARS
-			HAVE_DUNE_GRID_CHECKS
-			)
-	endmacro (config_hook)
+  macro (config_hook)
+    opm_need_version_of ("dune-common")
+    opm_need_version_of ("dune-grid")
+    find_file(_HAVE_DUNE_GRID_CHECKS checkpartition.cc HINTS ${dune-grid_INCLUDE_DIR}
+      PATH_SUFFIXES dune/grid/test)
+    if(_HAVE_DUNE_GRID_CHECKS)
+      set(HAVE_DUNE_GRID_CHECKS 1)
+    else(_HAVE_DUNE_GRID_CHECK)
+      set(HAVE_DUNE_GRID_CHECKS 0)
+    endif(_HAVE_DUNE_GRID_CHECKS)
+    list (APPEND ${project}_CONFIG_IMPL_VARS
+      HAVE_DUNE_GRID_CHECKS
+      )
+  endmacro (config_hook)
 
-	macro (prereqs_hook)
-	endmacro (prereqs_hook)
+  macro (prereqs_hook)
+  endmacro (prereqs_hook)
 
-	macro (sources_hook)
-	endmacro (sources_hook)
+  macro (sources_hook)
+  endmacro (sources_hook)
 
-	macro (fortran_hook)
-	endmacro (fortran_hook)
+  macro (fortran_hook)
+  endmacro (fortran_hook)
 
-	macro (files_hook)
-	endmacro (files_hook)
+  macro (files_hook)
+  endmacro (files_hook)
 
-	macro (tests_hook)
-	endmacro (tests_hook)
+  macro (tests_hook)
+  endmacro (tests_hook)
 
 # all setup common to the OPM library modules is done here
-	include (OpmLibMain)
-
-# if opm-common has not been found, use dune-build system
+  include (OpmLibMain)
 else()
-	project("opm-grid" C CXX)
+###########################################################
+#
+# DUNE build system
+# if opm-common has not been found, use dune-build system
+#
+###########################################################
+  project("opm-grid" C CXX)
 
-	# guess dune-common build dir
-	if(NOT (dune-common_DIR OR dune-common_ROOT OR
+  # guess dune-common build dir
+  if(NOT (dune-common_DIR OR dune-common_ROOT OR
         "${CMAKE_PREFIX_PATH}" MATCHES ".*dune-common.*"))
-  		  string(REPLACE ${CMAKE_PROJECT_NAME} dune-common dune-common_DIR
-      	${PROJECT_BINARY_DIR})
-	endif()
+        string(REPLACE ${CMAKE_PROJECT_NAME} dune-common dune-common_DIR
+        ${PROJECT_BINARY_DIR})
+  endif()
 
-	#find dune-common and set the module path
-	find_package(dune-common REQUIRED)
+  #find dune-common and set the module path
+  find_package(dune-common REQUIRED)
 
-	list(APPEND CMAKE_MODULE_PATH ${dune-common_MODULE_PATH}
-  	"${PROJECT_SOURCE_DIR}/cmake/modules")
+  list(APPEND CMAKE_MODULE_PATH ${dune-common_MODULE_PATH}
+    "${PROJECT_SOURCE_DIR}/cmake/modules")
 
-	#include the dune macros
-	include(DuneMacros)
+  #include the dune macros
+  include(DuneMacros)
 
-	# start a dune project with information from dune.module
-	dune_project()
-	dune_enable_all_packages()
+  # start a dune project with information from dune.module
+  dune_project()
+  dune_enable_all_packages()
 
-	include(CMakeLists_files.cmake)
+  # include source file lists
+  include(CMakeLists_files.cmake)
 
-	message("files = " ${MAIN_SOURCE_FILES} )
+  # libopmgrid
+  dune_add_library(opmgrid ${MAIN_SOURCE_FILES} ADD_LIBS ${DUNE_LIBS} )
 
-	#add_subdirectory(lib)
-	dune_add_library(opmgrid ${MAIN_SOURCE_FILES} ADD_LIBS ${DUNE_LIBS} )
+  # test executable
+  add_executable( test-opmgrid tests/grid_test.cc )
 
-	add_executable( test-opmgrid tests/grid_test.cc )
-
-	# finalize the dune project, e.g., generate config.h etc.
-	finalize_dune_project(GENERATE_CONFIG_H_CMAKE)
+  # finalize the dune project, e.g., generate config.h etc.
+  finalize_dune_project(GENERATE_CONFIG_H_CMAKE)
 endif()
