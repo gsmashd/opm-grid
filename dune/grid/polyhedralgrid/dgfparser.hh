@@ -9,14 +9,18 @@
 #include <dune/common/typetraits.hh>
 #include <dune/common/version.hh>
 
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
 #include <dune/grid/io/file/dgfparser/blocks/polyhedron.hh>
+#endif
 
 #include <dune/grid/polyhedralgrid/grid.hh>
 
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
+#endif
 
 namespace Dune
 {
@@ -24,7 +28,7 @@ namespace Dune
   namespace dgf
   {
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,5,0)
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,5)
     namespace PolyhedralGrid
     {
 
@@ -152,6 +156,8 @@ namespace Dune
       std::ifstream input( filename );
       if( !input )
         DUNE_THROW( DGFException, "Macrofile '" << filename << "' not found" );
+
+#if HAVE_OPM_PARSER
       if( !DuneGridFormatParser::isDuneGridFormat( input ) )
       {
         Opm::Parser parser;
@@ -163,7 +169,10 @@ namespace Dune
         return ;
       }
       else
+#endif
+      {
         generate( input );
+      }
     }
 
     Grid *grid () const { return grid_; }
