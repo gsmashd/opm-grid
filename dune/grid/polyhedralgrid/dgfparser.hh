@@ -7,8 +7,10 @@
 #include <numeric>
 
 #include <dune/common/typetraits.hh>
+#include <dune/common/version.hh>
 
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
+#include <dune/grid/io/file/dgfparser/blocks/polyhedron.hh>
 
 #include <dune/grid/polyhedralgrid/grid.hh>
 
@@ -22,6 +24,7 @@ namespace Dune
   namespace dgf
   {
 
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,5,0)
     namespace PolyhedralGrid
     {
 
@@ -111,6 +114,10 @@ namespace Dune
       };
 
     } // namespace PolyhedralGrid
+
+    using PolyhedralGrid :: PolygonBlock;
+    using PolyhedralGrid :: PolyhedronBlock;
+#endif
 
   } // namespace dgf
 
@@ -210,7 +217,7 @@ namespace Dune
 
     std::vector< std::vector< int > > readPolygons ( std::istream &input, int numVtx, int vtxOfs )
     {
-      dgf::PolyhedralGrid::PolygonBlock polygonBlock( input, numVtx, vtxOfs );
+      dgf::PolygonBlock polygonBlock( input, numVtx, vtxOfs );
       if( !polygonBlock.isactive() )
         DUNE_THROW( DGFException, "Polygon block not found" );
 
@@ -221,7 +228,7 @@ namespace Dune
 
     std::vector< std::vector< int > > readPolyhedra ( std::istream &input, int numPolygons )
     {
-      dgf::PolyhedralGrid::PolyhedronBlock polyhedronBlock( input, numPolygons );
+      dgf::PolyhedronBlock polyhedronBlock( input, numPolygons );
       std::vector< std::vector< int > > polyhedra;
       if( polyhedronBlock.isactive() )
       {
