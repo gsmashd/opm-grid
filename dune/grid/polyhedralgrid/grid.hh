@@ -29,7 +29,7 @@
 #include <dune/grid/polyhedralgrid/geometry.hh>
 #include <dune/grid/polyhedralgrid/gridview.hh>
 #include <dune/grid/polyhedralgrid/idset.hh>
-#include <dune/grid/io/file/vtk/vtkfaceutility.hh>
+//#include <dune/grid/io/file/vtk/vtkfaceutility.hh>
 
 // Re-enable warnings.
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
@@ -325,6 +325,7 @@ namespace Dune
      *  \param[in]  deck         Opm Eclipse deck
      *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
      */
+#if HAVE_OPM_PARSER
     explicit PolyhedralGrid ( Opm::DeckConstPtr deck,
                               const  std::vector<double>& poreVolumes = std::vector<double> ())
     : gridPtr_( createGrid( deck, poreVolumes ) ),
@@ -336,6 +337,7 @@ namespace Dune
     {
       init();
     }
+#endif
 
     /** \brief constructor
      *
@@ -819,6 +821,7 @@ namespace Dune
     }
 
   protected:
+#if HAVE_OPM_PARSER
     UnstructuredGridType* createGrid( Opm::DeckConstPtr deck, const std::vector< double >& poreVolumes ) const
     {
         const int* rawactnum = deck->hasKeyword("ACTNUM")
@@ -863,6 +866,7 @@ namespace Dune
         }
         return cgrid;
     }
+#endif
 
 
   public:
@@ -1505,6 +1509,7 @@ namespace Dune
     /** \} */
   };
 
+#if 0
   namespace VTK {
 
     template <int dim, int dimworld>
@@ -1596,6 +1601,7 @@ namespace Dune
     };
 
   } // end namespace VTK
+#endif
 
 
 } // namespace Dune

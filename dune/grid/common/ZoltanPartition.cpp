@@ -21,14 +21,14 @@
 #include <config.h>
 #endif
 #include <dune/grid/common/ZoltanPartition.hpp>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid
 {
 std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
-                                                const Opm::EclipseStateConstPtr eclipseState,
+                                                const ZoltanEclipseStateConstPtr eclipseState,
                                                 const double* transmissibilities,
                                                 const CollectiveCommunication<MPI_Comm>& cc,
                                                 int root)

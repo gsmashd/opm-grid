@@ -138,8 +138,10 @@ else()
 
 	message("files = " ${MAIN_SOURCE_FILES} )
 
-	add_subdirectory(lib)
-	# dune_add_library(opmgrid OBJECT ${MAIN_SOURCE_FILES} ADD_LIBS ${DUNE_LIBS} )
+	#add_subdirectory(lib)
+	dune_add_library(opmgrid ${MAIN_SOURCE_FILES} ADD_LIBS ${DUNE_LIBS} )
+
+	add_executable( test-opmgrid tests/grid_test.cc )
 
 	# finalize the dune project, e.g., generate config.h etc.
 	finalize_dune_project(GENERATE_CONFIG_H_CMAKE)

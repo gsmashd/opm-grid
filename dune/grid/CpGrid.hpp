@@ -46,7 +46,6 @@
 // Warning suppression for Dune includes.
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
@@ -61,8 +60,12 @@
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
+
+#if HAVE_OPM_PARSER
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
 
 #include <iostream>
 
@@ -222,6 +225,11 @@ namespace Dune
         /// Family typedef, why is this not defined by Grid<>?
         typedef CpGridFamily GridFamily;
 
+#if HAVE_OPM_PARSER
+        typedef Opm::EclipseStateConstPtr  EclipseStateConstPtr;
+#else
+        typedef void* EclipseStateConstPtr;
+#endif
 
         // --- Methods ---
 
@@ -246,6 +254,7 @@ namespace Dune
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
 
+#if HAVE_OPM_PARSER
         /// Read the Eclipse grid format ('grdecl').
         /// \param filename the name of the file to read.
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
@@ -282,6 +291,7 @@ namespace Dune
         ///        coordinate than this parameter, will be replaced by a single point.
         /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
         void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
+#endif
 
         //@}
 
@@ -621,7 +631,7 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        bool loadBalance(Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
+        bool loadBalance(EclipseStateConstPtr ecl=EclipseStateConstPtr(),
                          const double* transmissibilities = nullptr,
                          int overlapLayers=1)
         {
@@ -643,7 +653,7 @@ namespace Dune
         /// \warning May only be called once.
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
-                         Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
+                         EclipseStateConstPtr ecl=EclipseStateConstPtr(),
                          const double* transmissibilities = nullptr,
                          int overlapLayers=1)
         {
@@ -1143,7 +1153,7 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        bool scatterGrid(Opm::EclipseStateConstPtr ecl, const double* transmissibilities,
+        bool scatterGrid(EclipseStateConstPtr ecl, const double* transmissibilities,
                          int overlapLayers);
 
         /** @brief The data stored in the grid.

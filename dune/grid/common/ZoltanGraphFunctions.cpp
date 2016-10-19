@@ -22,11 +22,15 @@
 #include <config.h>
 #endif
 #include <limits>
+
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/CompletionSet.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Schedule.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/TimeMap.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
+#endif
+
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
@@ -332,11 +336,12 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 }
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
-                                             const Opm::EclipseStateConstPtr eclipseState,
+                                             const EclipseStateConstPtr eclipseState,
                                              const double* transmissibilities,
                                              bool pretendEmptyGrid)
     : grid_(grid), eclipseState_(eclipseState), transmissibilities_(transmissibilities)
 {
+#if HAVE_OPM_PARSER
     if ( pretendEmptyGrid )
     {
         // wellsGraph not needed
@@ -371,10 +376,12 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
         }
         addCompletionSetToGraph(well_indices);
     }
+#endif
 }
 
 void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
 {
+#if HAVE_OPM_PARSER
     if( ! wellsGraph_.size() )
     {
         // No wells to be processed
@@ -442,6 +449,7 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
              }
         }
     }
+#endif
 }
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,

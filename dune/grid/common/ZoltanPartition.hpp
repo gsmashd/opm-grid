@@ -23,11 +23,24 @@
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 
+#if HAVE_OPM_PARSER
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#endif
+
+
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid
 {
+
+#if HAVE_OPM_PARSER
+    typedef Opm::EclipseStateConstPtr ZoltanEclipseStateConstPtr;
+#else
+    typedef void* EclipseStateConstPtr;
+#endif
+
+
 /// \brief Partition a CpGrid using Zoltan
 ///
 /// This function will extract Zoltan's graph information
@@ -43,8 +56,9 @@ namespace cpgrid
 /// @param root The process number that holds the global grid.
 /// @return A vector that contains for each local cell of the grid the
 ///         the number of the process that owns it after repartitioning.
+
 std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
-                                                const Opm::EclipseStateConstPtr eclipseState,
+                                                const ZoltanEclipseStateConstPtr eclipseState,
                                                 const double* transmissibilities,
                                                 const CollectiveCommunication<MPI_Comm>& cc,
                                                 int root);

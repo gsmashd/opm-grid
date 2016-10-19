@@ -46,9 +46,11 @@
 #include <opm/core/grid/MinpvProcessor.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
+#endif
 
 #include <fstream>
 #include <iostream>
@@ -94,6 +96,8 @@ namespace Dune
 
 namespace cpgrid
 {
+
+#if HAVE_OPM_PARSER
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals)
     {
@@ -200,7 +204,7 @@ namespace cpgrid
             std::vector<double> new_coord;
             std::vector<double> new_zcorn;
             std::vector<int> new_actnum;
-            grdecl new_g;        
+            grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
             processEclipseFormat(new_g, z_tolerance, true, turn_normals);
@@ -210,7 +214,7 @@ namespace cpgrid
         }
     }
 
-
+#endif
 
 
 
@@ -444,7 +448,7 @@ namespace cpgrid
             // Build output.
             new_coord.swap(coord);
             new_zcorn.swap(zcorn);
-            new_actnum.swap(actnum);        
+            new_actnum.swap(actnum);
             output.dims[0] = new_n[0];
             output.dims[1] = new_n[1];
             output.dims[2] = new_n[2];

@@ -25,10 +25,13 @@
 #include <opm/core/grid/cornerpoint_grid.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
 #include <opm/common/ErrorMacros.hpp>
+
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#endif
 
 #include <array>
 #include <algorithm>
@@ -38,14 +41,14 @@ namespace Opm
 {
 
     /// Construct a 3d corner-point grid from a deck.
-    GridManager::GridManager(Opm::EclipseGridConstPtr eclipseGrid)
+    GridManager::GridManager(EclipseGridConstPtr eclipseGrid)
         : ug_(0)
     {
         initFromEclipseGrid(eclipseGrid, std::vector<double>());
     }
 
 
-    GridManager::GridManager(Opm::EclipseGridConstPtr eclipseGrid,
+    GridManager::GridManager(EclipseGridConstPtr eclipseGrid,
                              const std::vector<double>& poreVolumes)
         : ug_(0)
     {
@@ -128,9 +131,10 @@ namespace Opm
 
 
     // Construct corner-point grid from EclipseGrid.
-    void GridManager::initFromEclipseGrid(Opm::EclipseGridConstPtr eclipseGrid,
+    void GridManager::initFromEclipseGrid(EclipseGridConstPtr eclipseGrid,
                                           const std::vector<double>& poreVolumes)
     {
+#if HAVE_OPM_PARSER
         struct grdecl g;
         std::vector<int> actnum;
         std::vector<double> coord;
@@ -163,6 +167,7 @@ namespace Opm
         const double z_tolerance = eclipseGrid->isPinchActive() ?
             eclipseGrid->getPinchThresholdThickness() : 0.0;
         ug_ = create_grid_cornerpoint(&g, z_tolerance);
+#endif
         if (!ug_) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
         }
@@ -171,8 +176,9 @@ namespace Opm
 
 
 
-    void GridManager::createGrdecl(Opm::DeckConstPtr deck, struct grdecl &grdecl)
+    void GridManager::createGrdecl(DeckConstPtr deck, struct grdecl &grdecl)
     {
+#if HAVE_OPM_PARSER
         // Extract data from deck.
         const std::vector<double>& zcorn = deck->getKeyword("ZCORN").getSIDoubleData();
         const std::vector<double>& coord = deck->getKeyword("COORD").getSIDoubleData();
@@ -219,7 +225,9 @@ namespace Opm
             grdecl.mapaxes = cWtfMapaxes;
         } else
             grdecl.mapaxes = NULL;
-
+#else
+        OPM_THROW(std::logic_error,"opm-parser not available!");
+#endif
     }
 
 

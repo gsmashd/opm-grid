@@ -81,8 +81,12 @@
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
+
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
+
 #include "Entity2IndexDataHandle.hpp"
 #include "GlobalIdMapping.hpp"
 
@@ -153,6 +157,7 @@ public:
     /// found in <grid_prefix>-topo.dat etc.
     void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
+#if HAVE_OPM_PARSER
     /// Read the Eclipse grid format ('grdecl').
     /// \param filename the name of the file to read.
     /// \param periodic_extension if true, the grid will be (possibly) refined, so that
@@ -181,6 +186,7 @@ public:
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
     void processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                               const std::vector<double>& poreVolume = std::vector<double>());
+#endif
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param input_data the data in grdecl format, declared in preprocess.h.
@@ -188,7 +194,6 @@ public:
     ///        coordinate than this parameter, will be replaced by a single point.
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
     void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
-
 
     /// @brief
     ///    Extract Cartesian index triplet (i,j,k) of an active cell.
@@ -390,7 +395,7 @@ private:
     typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
 #else
     /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap};
+    enum AttributeSet{owner, overlap, copy};
 #endif
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)

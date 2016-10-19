@@ -20,10 +20,13 @@
 #ifndef OPM_GRIDMANAGER_HEADER_INCLUDED
 #define OPM_GRIDMANAGER_HEADER_INCLUDED
 
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
 
 #include <string>
+#include <vector>
 
 struct UnstructuredGrid;
 struct grdecl;
@@ -40,16 +43,22 @@ namespace Opm
     /// The resulting UnstructuredGrid is available through the c_grid() method.
     class GridManager
     {
+#if HAVE_OPM_PARSER
+        typedef Opm::EclipseGridConstPtr  EclipseGridConstPtr;
+#else
+        typedef void* EclipseGridConstPtr;
+        typedef void* DeckConstPtr;
+#endif
     public:
         /// Construct a grid from an EclipseState::EclipseGrid instance.
-        explicit GridManager(Opm::EclipseGridConstPtr eclipseGrid);
+        explicit GridManager(EclipseGridConstPtr eclipseGrid);
 
         /// Construct a grid from an EclipseState::EclipseGrid instance,
         /// giving an explicit set of pore volumes to be used for MINPV
         /// considerations.
         /// \input[in] eclipseGrid    encapsulates a corner-point grid given from a deck
         /// \input[in] poreVolumes    one element per logical cartesian grid element
-        GridManager(Opm::EclipseGridConstPtr eclipseGrid,
+        GridManager(EclipseGridConstPtr eclipseGrid,
                     const std::vector<double>& poreVolumes);
 
         /// Construct a 2d cartesian grid with cells of unit size.
@@ -78,7 +87,7 @@ namespace Opm
         /// to make it clear that we are returning a C-compatible struct.
         const UnstructuredGrid* c_grid() const;
 
-        static void createGrdecl(Opm::DeckConstPtr deck, struct grdecl &grdecl);
+        static void createGrdecl(DeckConstPtr deck, struct grdecl &grdecl);
 
     private:
         // Disable copying and assignment.
@@ -86,7 +95,7 @@ namespace Opm
         GridManager& operator=(const GridManager& other);
 
         // Construct corner-point grid from EclipseGrid.
-        void initFromEclipseGrid(Opm::EclipseGridConstPtr eclipseGrid,
+        void initFromEclipseGrid(EclipseGridConstPtr eclipseGrid,
                                  const std::vector<double>& poreVolumes);
 
         // The managed UnstructuredGrid.

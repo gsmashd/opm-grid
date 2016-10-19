@@ -37,12 +37,16 @@
 #endif
 
 
+#if HAVE_OPM_CORE
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
+#endif
 
+#if HAVE_OPM_COMMON
 #if HAVE_MPI
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#endif
 #endif
 
 #include "../CpGrid.hpp"
@@ -62,6 +66,7 @@ namespace Dune
           distributed_data_()
     {}
 
+#if HAVE_OPM_PARSER
     /// Initialize the grid.
     void CpGrid::init(const Opm::parameter::ParameterGroup& param)
     {
@@ -158,6 +163,8 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
 #endif
 }
 
+#endif // if HAVE_OPM_PARSER
+
 
     void CpGrid::createCartesian(const array<int, 3>& dims,
                                  const array<double, 3>& cellsize)
@@ -209,13 +216,14 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     {
         current_view_data_->writeSintefLegacyFormat(grid_prefix);
     }
+
+#if HAVE_OPM_PARSER
     void CpGrid::readEclipseFormat(const std::string& filename,
                                    bool periodic_extension, bool turn_normals)
     {
         current_view_data_->readEclipseFormat(filename, periodic_extension,
                                               turn_normals);
     }
-
     void CpGrid::processEclipseFormat(Opm::DeckConstPtr deck,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
@@ -241,5 +249,6 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     {
         current_view_data_->processEclipseFormat(input_data, z_tolerance, remove_ij_boundary, turn_normals);
     }
+#endif
 
 } // namespace Dune

@@ -16,9 +16,11 @@
 // Re-enable warnings.
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
+#endif
 
 #include <iostream>
 
@@ -152,6 +154,7 @@ int main(int argc, char** argv )
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
 
+#if HAVE_OPM_PARSER
     Opm::Parser parser;
     Opm::ParseContext parseContext;
     const auto deck = parser.parseString(deckString , parseContext);
@@ -170,5 +173,7 @@ int main(int argc, char** argv )
       grid.processEclipseFormat(deck, false, false, false, porv);
       testGrid( grid, "cpgrid" );
     }
+#endif
+
     return 0;
 }

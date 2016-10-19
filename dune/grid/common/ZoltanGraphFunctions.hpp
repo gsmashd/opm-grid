@@ -21,7 +21,10 @@
 #ifndef DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 #define DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#endif
+
 #include <dune/grid/CpGrid.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
@@ -111,6 +114,7 @@ void getCpGridWellsEdgeList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
                        ZOLTAN_ID_PTR nborGID, int *nborProc,
                        int wgt_dim, float *ewgts, int *err);
 
+
 /// \brief A graph repesenting a grid together with the well completions.
 ///
 /// The edges of the graph are formed by the superset of the edges representing
@@ -120,6 +124,12 @@ void getCpGridWellsEdgeList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
 /// Even for shut wells the connections will exist.
 class CombinedGridWellGraph
 {
+#if HAVE_OPM_PARSER
+    typedef Opm::EclipseStateConstPtr EclipseStateConstPtr;
+#else
+    typedef void* EclipseStateConstPtr;
+#endif
+
 public:
     typedef std::vector<std::set<int> > GraphType;
 
@@ -128,7 +138,7 @@ public:
     /// \param eclipseState The eclipse state to extract the well information from.
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
-                          Opm::EclipseStateConstPtr eclipseState,
+                          EclipseStateConstPtr eclipseState,
                           const double* transmissibilities,
                           bool pretendEmptyGrid);
 
@@ -166,10 +176,10 @@ private:
         }
 
     }
-    
-        
+
+
     const Dune::CpGrid& grid_;
-    Opm::EclipseStateConstPtr eclipseState_;
+    EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
     const double* transmissibilities_;
 };
