@@ -10,4 +10,5 @@ Label: 2016.04
 Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
-Depends: opm-common opm-parser opm-core dune-common dune-grid
+Depends: dune-grid
+Suggests: opm-common opm-parser opm-core
