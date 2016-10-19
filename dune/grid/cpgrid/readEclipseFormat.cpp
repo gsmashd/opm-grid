@@ -44,7 +44,10 @@
 
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
+
+#if HAVE_OPM_CORE
 #include <opm/core/utility/StopWatch.hpp>
+#endif
 
 #if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Deck/Deck.hpp>
@@ -769,7 +772,11 @@ namespace cpgrid
             std::vector<point_t> cell_centroids;
             std::vector<double>  cell_volumes;
             using namespace GeometryHelpers;
-#ifdef VERBOSE
+#if HAVE_OPM_CORE && defined(VERBOSE)
+#define USE_VERBOSE
+#endif
+
+#ifdef USE_VERBOSE
             Opm::time::StopWatch clock;
             clock.start();
 #endif
@@ -786,7 +793,7 @@ namespace cpgrid
                 }
                 points.push_back(pt);
             }
-#ifdef VERBOSE
+#ifdef USE_VERBOSE
             std::cout << "Points:             " << clock.secsSinceLast() << std::endl;
 #endif
 
@@ -811,7 +818,7 @@ namespace cpgrid
                 face_centroids.push_back(centroid);
                 face_areas.push_back(area);
             }
-#ifdef VERBOSE
+#ifdef USE_VERBOSE
             std::cout << "Faces:              " << clock.secsSinceLast() << std::endl;
 #endif
             // Get the cell data.
@@ -849,7 +856,7 @@ namespace cpgrid
                 cell_centroids.push_back(cell_centroid);
                 cell_volumes.push_back(tot_cell_vol);
             }
-#ifdef VERBOSE
+#ifdef USE_VERBOSE
             std::cout << "Cells:              " << clock.secsSinceLast() << std::endl;
 #endif
 
@@ -886,7 +893,7 @@ namespace cpgrid
             std::transform(points.begin(), points.end(),
                            std::back_inserter(pg), mpointg);
             pointgeom.assign(pg.begin(), pg.end());
-#ifdef VERBOSE
+#ifdef USE_VERBOSE
             std::cout << "Transforms/copies:  " << clock.secsSinceLast() << std::endl;
 #endif
 
@@ -900,7 +907,7 @@ namespace cpgrid
             cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
             gpol = gp;
             normals.assign(face_normals.begin(), face_normals.end());
-#ifdef VERBOSE
+#ifdef USE_VERBOSE
             std::cout << "Final construction: " << clock.secsSinceLast() << std::endl;
 #endif
         }
