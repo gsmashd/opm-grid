@@ -139,6 +139,9 @@ namespace Dune
         typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LeafGridView;
         typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LevelGridView;
       };
+
+      typedef typename Partition< All_Partition >::LeafGridView   LeafGridView;
+      typedef typename Partition< All_Partition >::LevelGridView  LevelGridView;
     };
   };
 
