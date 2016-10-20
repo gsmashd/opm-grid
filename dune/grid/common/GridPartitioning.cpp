@@ -86,29 +86,34 @@ namespace Dune
         }
 
 
-        void colourMyComponentRecursive(const CpGrid& grid,
-                                        const CpGrid::Codim<0>::EntityPointer& c,
+        template <class GridView>
+        void colourMyComponentRecursive(const GridView& gridView,
+                                        const CpGrid::Codim<0>::Entity& c,
                                         const int colour,
                                         const std::vector<int>& cell_part,
                                         std::vector<int>& cell_colour)
         {
-            const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-            int my_index = ix.index(*c);
+            const auto& ix = gridView.indexSet();
+            int my_index = ix.index( c );
             cell_colour[my_index] = colour;
             // For each neighbour...
-            for (CpGrid::LeafIntersectionIterator it = c->ileafbegin(); it != c->ileafend(); ++it) {
-                if (it->neighbor()) {
-                    int nb_index = ix.index(*(it->outside()));
+            for (auto it = gridView.ibegin( c ), end = gridView.iend( c ); it != end; ++it)
+            {
+                const auto& intersection = *it ;
+                if (intersection.neighbor()) {
+                    const auto& neighbor = intersection.outside() ;
+                    int nb_index = ix.index( neighbor );
                     if (cell_part[my_index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
-                        colourMyComponentRecursive(grid, it->outside(), colour, cell_part, cell_colour);
+                        colourMyComponentRecursive(gridView, neighbor, colour, cell_part, cell_colour);
                     }
                 }
             }
         }
 
 
-        void colourMyComponent(const CpGrid& grid,
-                               const CpGrid::Codim<0>::EntityPointer& c,
+        template <class GridView>
+        void colourMyComponent(const GridView& gridView,
+                               const CpGrid::Codim<0>::Entity& c,
                                const int colour,
                                const std::vector<int>& cell_part,
                                std::vector<int>& cell_colour)
@@ -116,11 +121,11 @@ namespace Dune
             typedef CpGrid::LeafIntersectionIterator NbIter;
             typedef std::pair<int, std::pair<NbIter, NbIter> > VertexInfo;
             std::stack<VertexInfo> v_stack;
-            const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-            int index = ix.index(*c);
+            const auto& ix = gridView.indexSet();
+            int index = ix.index(c);
             cell_colour[index] = colour;
-            NbIter cur = c->ileafbegin();
-            NbIter end = c->ileafend();
+            NbIter cur = gridView.ibegin( c );
+            NbIter end = gridView.iend( c );
             v_stack.push(std::make_pair(index, std::make_pair(cur, end)));
             while (!v_stack.empty()) {
                 index = v_stack.top().first;
@@ -129,8 +134,9 @@ namespace Dune
                 v_stack.pop();
                 while (cur != end) {
                     bool visit_nb = false;
-                    if (cur->neighbor()) {
-                        int nb_index = ix.index(*(cur->outside()));
+                    const auto& intersection = *cur;
+                    if (intersection.neighbor()) {
+                        int nb_index = ix.index( intersection.outside());
                         if (cell_part[index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
                             visit_nb = true;
                         }
@@ -138,9 +144,11 @@ namespace Dune
                     if (visit_nb) {
                         NbIter cur_cp = cur;
                         v_stack.push(std::make_pair(index, std::make_pair(++cur, end)));
-                        index = ix.index(*(cur_cp->outside()));
-                        cur = cur_cp->outside()->ileafbegin();
-                        end = cur_cp->outside()->ileafend();
+                        const auto& curInter = *cur_cp;
+                        const auto& curNeighbor = curInter.outside();
+                        index = ix.index( curNeighbor );
+                        cur = gridView.ibegin( curNeighbor );
+                        end = gridView.iend( curNeighbor );
                         cell_colour[index] = colour;
                     } else {
                         ++cur;
@@ -158,9 +166,14 @@ namespace Dune
             std::vector<int> cell_colour(cell_part.size(), -1);
             std::vector<int> partition_used(num_part, 0);
             int max_part = num_part;
-            const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-            for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
-                int index = ix.index(*it);
+            const auto& gridView = grid.leafGridView();
+            const auto& ix = gridView.indexSet();
+
+            for (auto it = gridView.template begin<0>(), end = gridView.template end<0>();
+                 it != end; ++it )
+            {
+                const auto& entity = *it ;
+                int index = ix.index( entity );
                 if (cell_colour[index] == -1) {
                     int part = cell_part[index];
                     int current_colour = part;
@@ -170,9 +183,9 @@ namespace Dune
                         partition_used[part] = true;
                     }
                     if (recursive) {
-                        colourMyComponentRecursive(grid, it, current_colour, cell_part, cell_colour);
+                        colourMyComponentRecursive(gridView, entity, current_colour, cell_part, cell_colour);
                     } else {
-                        colourMyComponent(grid, it, current_colour, cell_part, cell_colour);
+                        colourMyComponent(gridView, entity, current_colour, cell_part, cell_colour);
                     }
                 }
             }
