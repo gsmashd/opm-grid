@@ -148,7 +148,14 @@ else()
 	dune_register_package_flags(LIBRARIES "${OPM_GRID_LIBRARY}"
                               INCLUDE_DIRS "${OPM_GRID_INCLUDEDIRS}")
 
-	dune_add_test(NAME test-opmgrid SOURCES tests/grid_test.cc LINK_LIBRARIES opmgrid)
+	if( DUNE_GRID_VERSION VERSION_LESS "2.5" )
+		message( "libraries = ${LIBRARIES} ${ALL_PKG_LIBS}" )
+		add_executable(test-opmgrid tests/grid_test.cc )
+		target_link_libraries( test-opmgrid opmgrid )
+		add_dune_all_flags( test-opmgrid )
+	else()
+		dune_add_test(NAME test-opmgrid SOURCES tests/grid_test.cc LINK_LIBRARIES opmgrid)
+	endif()
 
   # finalize the dune project, e.g., generate config.h etc.
   finalize_dune_project(GENERATE_CONFIG_H_CMAKE)

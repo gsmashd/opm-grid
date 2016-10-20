@@ -9,8 +9,9 @@
 #include <dune/common/typetraits.hh>
 #include <dune/common/version.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
+
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/io/file/dgfparser/blocks/polyhedron.hh>
 #endif
 
