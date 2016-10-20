@@ -144,8 +144,11 @@ else()
   # libopmgrid
   dune_add_library(opmgrid ${MAIN_SOURCE_FILES} ADD_LIBS ${DUNE_LIBS} )
 
-  # test executable
-  add_executable( test-opmgrid tests/grid_test.cc )
+	# register alu grid to all pkg flags
+	dune_register_package_flags(LIBRARIES "${OPM_GRID_LIBRARY}"
+                              INCLUDE_DIRS "${OPM_GRID_INCLUDEDIRS}")
+
+	dune_add_test(NAME test-opmgrid SOURCES tests/grid_test.cc LINK_LIBRARIES opmgrid)
 
   # finalize the dune project, e.g., generate config.h etc.
   finalize_dune_project(GENERATE_CONFIG_H_CMAKE)

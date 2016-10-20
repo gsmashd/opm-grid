@@ -26,6 +26,8 @@
 // DUNE_THROW((Exception), (message))
 
 #define OPM_MESSAGE(message)
+
+#define OPM_ERROR_IF(condition, message)
 #endif
 
 #endif
