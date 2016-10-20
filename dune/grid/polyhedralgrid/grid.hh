@@ -29,7 +29,6 @@
 #include <dune/grid/polyhedralgrid/geometry.hh>
 #include <dune/grid/polyhedralgrid/gridview.hh>
 #include <dune/grid/polyhedralgrid/idset.hh>
-//#include <dune/grid/io/file/vtk/vtkfaceutility.hh>
 
 // Re-enable warnings.
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
@@ -1508,101 +1507,6 @@ namespace Dune
 
     /** \} */
   };
-
-#if 0
-  namespace VTK {
-
-    template <int dim, int dimworld>
-    struct VTKFaceUtility< Dune::PolyhedralGrid< dim, dimworld > >
-    {
-
-      typedef typename Dune::PolyhedralGrid< dim, dimworld >::template Codim<0>::Entity Entity;
-      template <class CornerIterator, class IndexSet, class T>
-      static void faceVertices( CornerIterator it,
-                                const CornerIterator end,
-                                const IndexSet& indexSet,
-                                std::vector<T>& faces,
-                                std::vector<T>& faceOffsets )
-      {
-        if( dim == 3 && it != end )
-        {
-          const size_t nCells = indexSet.size( 0 );
-          // clear output arrays
-          faces.clear();
-          faces.reserve( 5 * nCells );
-          faceOffsets.clear();
-          faceOffsets.reserve( nCells );
-
-          std::size_t offset = 0;
-
-          Entity element = *it;
-          int elIndex = indexSet.index( element );
-          std::vector< T > vertices;
-          vertices.reserve( 30 );
-          for( ; it != end; ++it )
-          {
-            const auto& cell = *it ;
-            const int cellIndex = indexSet.index( cell ) ;
-            if( elIndex != cellIndex )
-            {
-              fillFacesForElement( element, indexSet, vertices, offset, faces, faceOffsets );
-
-              vertices.clear();
-              element = cell ;
-              elIndex = cellIndex ;
-            }
-            vertices.push_back( it.id() );
-          }
-
-          // fill faces for last element
-          fillFacesForElement( element, indexSet, vertices, offset, faces, faceOffsets );
-        }
-      }
-
-      template <class IndexSet, class T>
-      static void fillFacesForElement( const Entity& element,
-                                       const IndexSet& indexSet,
-                                       const std::vector<T>& vertices,
-                                       std::size_t& offset,
-                                       std::vector<T>& faces,
-                                       std::vector<T>& faceOffsets )
-      {
-        std::map< T, T > vxMap;
-
-        // get number of local faces
-        const std::size_t nVertices = element.subEntities( dim );
-        for( std::size_t vx = 0; vx < nVertices; ++ vx )
-        {
-          const int vxIdx = indexSet.subIndex( element, vx, dim );
-          vxMap[ vxIdx ] = vertices[ vx ];
-        }
-
-        // get number of local faces
-        const std::size_t nFaces = element.subEntities( 1 );
-        faces.push_back( nFaces );
-        ++offset;
-        for( std::size_t fce = 0; fce < nFaces; ++ fce )
-        {
-          const auto face = element.template subEntity< 1 > ( fce );
-          const int nVxFace = face.impl().subEntities( dim );
-          faces.push_back( nVxFace );
-          ++offset ;
-          for( int i=0; i<nVxFace; ++i )
-          {
-            const T vxIndex = indexSet.subIndex( face, i, dim );
-            faces.push_back( vxMap[ vxIndex ] );
-            ++offset ;
-          }
-        }
-
-        // store face offset
-        faceOffsets.push_back( offset );
-      }
-    };
-
-  } // end namespace VTK
-#endif
-
 
 } // namespace Dune
 
