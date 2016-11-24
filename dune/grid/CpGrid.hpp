@@ -41,11 +41,11 @@
 #include <string>
 #include <map>
 #include <array>
+#include <unordered_set>
 #include <opm/common/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
-
 
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
@@ -63,18 +63,11 @@
 
 #if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #endif
 
 #include <iostream>
 
 
-namespace Opm {
-    namespace parameter {
-        class ParameterGroup;
-    }
-}
 
 namespace Dune
 {
@@ -153,7 +146,7 @@ namespace Dune
         template <PartitionIteratorType pitype>
         struct Partition
         {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
             /// \brief The type of the level grid view associated with this partition type.
             typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
             /// \brief The type of the leaf grid view associated with this partition type.
@@ -167,7 +160,7 @@ namespace Dune
 
         };
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         /// \brief The type of the level grid view associated with this partition type.
         typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
         /// \brief The type of the leaf grid view associated with this partition type.
@@ -226,7 +219,7 @@ namespace Dune
         typedef CpGridFamily GridFamily;
 
 #if HAVE_OPM_PARSER
-        typedef Opm::EclipseStateConstPtr  EclipseStateConstPtr;
+        typedef const Opm::EclipseState*  EclipseStateConstPtr;
 #else
         typedef void* EclipseStateConstPtr;
 #endif
@@ -236,9 +229,6 @@ namespace Dune
 
         /// Default constructor
         CpGrid();
-
-        /// Initialize the grid from parameters.
-        void init(const Opm::parameter::ParameterGroup& param);
 
         /// \name IO routines
         //@{
@@ -256,25 +246,6 @@ namespace Dune
 
 #if HAVE_OPM_PARSER
         /// Read the Eclipse grid format ('grdecl').
-        /// \param filename the name of the file to read.
-        /// \param periodic_extension if true, the grid will be (possibly) refined, so that
-        ///        intersections/faces along i and j boundaries will match those on the other
-        ///        side. That is, i- faces will match i+ faces etc.
-        void readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals = false);
-
-
-        /// Read the Eclipse grid format ('grdecl').
-        /// \param deck the parsed deck from opm-parser (which is a low-level object)
-        /// \param periodic_extension if true, the grid will be (possibly) refined, so that
-        ///        intersections/faces along i and j boundaries will match those on the other
-        ///        side. That is, i- faces will match i+ faces etc.
-        /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
-        /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-        /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-        void processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                                  const std::vector<double>& poreVolume = std::vector<double>());
-
-        /// Read the Eclipse grid format ('grdecl').
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
         ///        intersections/faces along i and j boundaries will match those on the other
@@ -282,7 +253,7 @@ namespace Dune
         /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-        void processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+        void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>());
 
         /// Read the Eclipse grid format ('grdecl').
@@ -631,11 +602,23 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        bool loadBalance(EclipseStateConstPtr ecl=EclipseStateConstPtr(),
-                         const double* transmissibilities = nullptr,
-                         int overlapLayers=1)
+        std::pair<bool, std::unordered_set<std::string> >
+        loadBalance(EclipseStateConstPtr ecl,
+                    const double* transmissibilities = nullptr,
+                    int overlapLayers=1)
         {
             return scatterGrid(ecl, transmissibilities, overlapLayers);
+        }
+
+        // loadbalance is not part of the grid interface therefore we skip it.
+
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \warning May only be called once.
+        bool loadBalance(int overlapLayers=1)
+        {
+            using std::get;
+            return get<0>(scatterGrid(nullptr, nullptr, overlapLayers ));
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -652,12 +635,28 @@ namespace Dune
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
+        std::pair<bool, std::unordered_set<std::string> >
+        loadBalance(DataHandle& data,
+                    const Opm::EclipseState* ecl,
+                    const double* transmissibilities = nullptr,
+                    int overlapLayers=1)
+        {
+            auto ret = loadBalance(ecl, transmissibilities, overlapLayers);
+            scatterData(data);
+            return ret;
+        }
+
+        /// \brief Distributes this grid and data over the available nodes in a distributed machine.
+        /// \param data A data handle describing how to distribute attached data.
+        /// \param overlapLayers The number of layers of overlap cells to be added
+        ///        (default: 1)
+        /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
+        /// \warning May only be called once.
+        template<class DataHandle>
         bool loadBalance(DataHandle& data,
-                         EclipseStateConstPtr ecl=EclipseStateConstPtr(),
-                         const double* transmissibilities = nullptr,
                          int overlapLayers=1)
         {
-            bool ret = scatterGrid(ecl, transmissibilities, overlapLayers);
+            bool ret = loadBalance(overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -706,6 +705,12 @@ namespace Dune
         // enum { dimension = 3 }; // already defined
 
         typedef Dune::FieldVector<double, 3> Vector;
+
+
+        const std::vector<double>& zcornData() const {
+            return data_->zcornData();
+        }
+
 
         // Topology
         /// \brief Get the number of cells.
@@ -1153,8 +1158,9 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        bool scatterGrid(EclipseStateConstPtr ecl, const double* transmissibilities,
-                         int overlapLayers);
+        std::pair<bool, std::unordered_set<std::string> >
+        scatterGrid(EclipseStateConstPtr ecl, const double* transmissibilities,
+                    int overlapLayers);
 
         /** @brief The data stored in the grid.
          *
@@ -1185,7 +1191,7 @@ namespace Dune
             static const bool v = true;
         };
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         /// \todo Please doc me !
         template <>
         struct isParallel<CpGrid>

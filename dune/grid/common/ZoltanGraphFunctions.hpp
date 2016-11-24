@@ -26,6 +26,7 @@
 #endif
 
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/common/WellConnections.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 
@@ -125,7 +126,7 @@ void getCpGridWellsEdgeList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
 class CombinedGridWellGraph
 {
 #if HAVE_OPM_PARSER
-    typedef Opm::EclipseStateConstPtr EclipseStateConstPtr;
+    typedef const Opm::EclipseState EclipseStateConstPtr;
 #else
     typedef void* EclipseStateConstPtr;
 #endif
@@ -138,7 +139,7 @@ public:
     /// \param eclipseState The eclipse state to extract the well information from.
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
-                          EclipseStateConstPtr eclipseState,
+                          EclipseStateConstPtr,
                           const double* transmissibilities,
                           bool pretendEmptyGrid);
 
@@ -152,36 +153,41 @@ public:
     {
         return wellsGraph_;
     }
-    /// \brief Post process partitioning to ensure a well is completely on one process.
-    /// \param[inout] parts The assigned partition numbers for each vertex.
-    void postProcessPartitioningForWells(std::vector<int>& parts);
 
     double transmissibility(int face_index) const
     {
         return transmissibilities_ ? (1.0e18*transmissibilities_[face_index]) : 1;
     }
-private:
-    void addCompletionSetToGraph(std::set<int>& well_indices)
+
+    const WellConnections& getWellConnections() const
     {
-        for( auto well_idx = well_indices.begin(); well_idx != well_indices.end();
-             ++well_idx)
+        return well_indices_;
+    }
+private:
+
+    void addCompletionSetToGraph()
+    {
+        for(const auto& well_indices: well_indices_)
         {
-            auto well_idx2 = well_idx;
-            for( ++well_idx2; well_idx2 != well_indices.end();
-                 ++well_idx2)
+            for( auto well_idx = well_indices.begin(); well_idx != well_indices.end();
+                 ++well_idx)
             {
-                wellsGraph_[*well_idx].insert(*well_idx2);
-                wellsGraph_[*well_idx2].insert(*well_idx);
+                auto well_idx2 = well_idx;
+                for( ++well_idx2; well_idx2 != well_indices.end();
+                     ++well_idx2)
+                {
+                    wellsGraph_[*well_idx].insert(*well_idx2);
+                    wellsGraph_[*well_idx2].insert(*well_idx);
+                }
             }
         }
-
     }
 
 
     const Dune::CpGrid& grid_;
-    EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
     const double* transmissibilities_;
+    WellConnections well_indices_;
 };
 
 

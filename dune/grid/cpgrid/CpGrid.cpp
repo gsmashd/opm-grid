@@ -53,6 +53,7 @@
 #include "CpGridData.hpp"
 #include <dune/grid/common/ZoltanPartition.hpp>
 #include <dune/grid/common/GridPartitioning.hpp>
+#include <dune/grid/common/WellConnections.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -96,8 +97,10 @@ namespace Dune
     }
 
 
-bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
-                         const double* transmissibilities, int overlapLayers)
+
+std::pair<bool, std::unordered_set<std::string> >
+CpGrid::scatterGrid(const Opm::EclipseState* ecl,
+                    const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(ecl);
@@ -108,23 +111,51 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     {
         std::cerr<<"There is already a distributed version of the grid."
                  << " Maybe scatterGrid was called before?"<<std::endl;
-        return false;
+        return std::make_pair(false, std::unordered_set<std::string>());
     }
 
     CollectiveCommunication cc(MPI_COMM_WORLD);
 
-    std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
-    cell_part = cpgrid::zoltanGraphPartitionGridOnRoot(*this, ecl, transmissibilities,
+    auto part_and_wells = cpgrid::zoltanGraphPartitionGridOnRoot(*this, ecl, transmissibilities,
                                                        cc, 0);
     int num_parts = cc.size();
+    using std::get;
+    auto cell_part = get<0>(part_and_wells);
+    auto defunct_wells = get<1>(part_and_wells);
 #else
+    std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int  num_parts=-1;
     std::array<int, 3> initial_split;
     initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
     initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
-    partition(*this, initial_split, num_parts, cell_part);
+    partition(*this, initial_split, num_parts, cell_part, false, false);
+    const auto& cpgdim =  logicalCartesianSize();
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    for( int i=0; i < numCells(); ++i )
+    {
+        cartesian_to_compressed[globalCell()[i]] = i;
+    }
+
+    std::unordered_set<std::string> defunct_wells;
+
+    if ( ecl )
+    {
+        cpgrid::WellConnections well_connections(*ecl,
+                                                 cpgdim,
+                                                 cartesian_to_compressed);
+
+        auto wells_on_proc =
+            cpgrid::postProcessPartitioningForWells(cell_part,
+                                                    *ecl,
+                                                    well_connections,
+                                                    cc.size());
+        defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
+                                                        *ecl,
+                                                        cc,
+                                                        0);
+    }
 #endif
 
     MPI_Comm new_comm = MPI_COMM_NULL;
@@ -154,12 +185,13 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
             distributed_data_->cell_to_face_.size() << " cells." << std::endl;
     }
     current_view_data_ = distributed_data_.get();
-    return true;
+    return std::make_pair(true, defunct_wells);
+
 #else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
               << "sufficiently recent.\n";
-    return false;
+    return std::make_pair(false, std::unordered_set<std::string>());
 #endif
 }
 
@@ -234,7 +266,7 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
                                                  poreVolume);
     }
 
-    void CpGrid::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid,
+    void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
                                       const std::vector<double>& poreVolume)

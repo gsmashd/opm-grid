@@ -22,16 +22,23 @@
 #endif
 #include <dune/grid/common/ZoltanPartition.hpp>
 
+#if HAVE_OPM_PARSER
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Schedule.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
+#endif
+
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid
 {
-std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
-                                                const ZoltanEclipseStateConstPtr eclipseState,
-                                                const double* transmissibilities,
-                                                const CollectiveCommunication<MPI_Comm>& cc,
-                                                int root)
+std::pair<std::vector<int>, std::unordered_set<std::string> >
+zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
+                               ZoltanEclipseStateConstPtr eclipseState,
+                               const double* transmissibilities,
+                               const CollectiveCommunication<MPI_Comm>& cc,
+                               int root)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -54,26 +61,33 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
     Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
     Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
-    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "3");
     Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
     Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
-    bool pretendEmptyGrid = cc.rank()!=root;
+    // For the load balancer one process has the whole grid and
+    // all others an empty partition before loadbalancing.
+    bool partitionIsEmpty     = cc.rank()!=root;
+    bool partitionIsWholeGrid = !partitionIsEmpty;
+
+#if HAVE_OPM_PARSER
     std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
 
     if( eclipseState )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState,
-                                                       transmissibilities, pretendEmptyGrid));
+        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid,
+                                                       eclipseState,
+                                                       transmissibilities,
+                                                       partitionIsEmpty));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
-                                                    pretendEmptyGrid);
+                                                    partitionIsEmpty);
     }
     else
+#endif
     {
-        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, pretendEmptyGrid);
+        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, partitionIsEmpty);
     }
 
     rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
@@ -90,17 +104,25 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                              &exportLocalGids,   /* Local IDs of the vertices I must send */
                              &exportProcs,    /* Process to which I send each of the vertices */
                              &exportToPart);  /* Partition to which each vertex will belong */
-    int size = cpgrid.numCells();
-    int         rank  = cc.rank();
-    std::vector<int> parts=std::vector<int>(size, rank);
+    int                         size = cpgrid.numCells();
+    int                         rank  = cc.rank();
+    std::vector<int>            parts(size, rank);
+    std::vector<std::vector<int> > wells_on_proc;
 
     for ( int i=0; i < numExport; ++i )
     {
         parts[exportLocalGids[i]] = exportProcs[i];
     }
-    if( eclipseState && ! pretendEmptyGrid )
+
+#if HAVE_OPM_PARSER
+    if( eclipseState && partitionIsWholeGrid )
     {
-        grid_and_wells->postProcessPartitioningForWells(parts);
+        wells_on_proc =
+            postProcessPartitioningForWells(parts,
+                                            *eclipseState,
+                                            grid_and_wells->getWellConnections(),
+                                            cc.size());
+
 #ifndef NDEBUG
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
@@ -122,11 +144,26 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         }
 #endif
     }
-    cc.broadcast(&parts[0], parts.size(), root);
+#endif
+
+    // free space allocated for zoltan.
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
-    return parts;
+
+    std::unordered_set<std::string> defunct_well_names;
+
+    if( eclipseState )
+    {
+        defunct_well_names = computeDefunctWellNames(wells_on_proc,
+                                                     *eclipseState,
+                                                     cc,
+                                                     root);
+    }
+
+    cc.broadcast(&parts[0], parts.size(), root);
+
+    return std::make_pair(parts, defunct_well_names);
 }
 }
 }

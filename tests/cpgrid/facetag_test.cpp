@@ -26,6 +26,7 @@
 
 
 #define BOOST_TEST_MODULE FaceTagTests
+#define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/cpgrid/GridHelpers.hpp>
@@ -42,7 +43,7 @@ BOOST_AUTO_TEST_CASE(facetag)
     std::array<double, 3> cellsize = { 1., 1., 1. };
     grid.createCartesian(dims, cellsize);
     Dune::cpgrid::Cell2FacesContainer c2f(&grid);
-    
+
     for( int cell=0; cell < grid.numCells(); ++cell)
     {
         std::cout<<"cell="<<cell;
@@ -82,7 +83,7 @@ BOOST_AUTO_TEST_CASE(facetag)
                          <<" ijk1="<<ijk1[0]<<" "<<ijk1[1]<<" "<<ijk1[2]<<" tag="<<tag<<std::endl;
                 BOOST_ASSERT( ijk0[0] <= ijk1[0] &&  ijk0[1] <= ijk1[1] &&  ijk0[2] <= ijk1[2]);
                 int firstInside = (cell==c0) ? 1 : 0;
-                
+
                 for ( int dim = 0; dim < 3; ++dim)
                 {
                     if ( ijk0[dim] < ijk1[dim] )
@@ -93,4 +94,17 @@ BOOST_AUTO_TEST_CASE(facetag)
             }
         }
     }
+}
+
+bool
+init_unit_test_func()
+{
+    return true;
+}
+
+int main(int argc, char** argv)
+{
+    Dune::MPIHelper::instance(argc, argv);
+    boost::unit_test::unit_test_main(&init_unit_test_func,
+                                     argc, argv);
 }

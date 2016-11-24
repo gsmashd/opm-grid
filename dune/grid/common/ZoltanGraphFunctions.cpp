@@ -171,7 +171,7 @@ void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
     (void) cpGridPointer; (void) sizeGID; (void) sizeLID; (void) numCells;
     (void) globalID; (void) localID; (void) numEdges; (void) nborGID;
     (void) nborProc; (void) wgtDim; (void) ewgts;
-    err = ZOLTAN_OK;
+    *err = ZOLTAN_OK;
 }
 
 void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
@@ -336,10 +336,10 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 }
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
-                                             const EclipseStateConstPtr eclipseState,
+                                             EclipseStateConstPtr eclipseState,
                                              const double* transmissibilities,
                                              bool pretendEmptyGrid)
-    : grid_(grid), eclipseState_(eclipseState), transmissibilities_(transmissibilities)
+    : grid_(grid), transmissibilities_(transmissibilities)
 {
 #if HAVE_OPM_PARSER
     if ( pretendEmptyGrid )
@@ -350,105 +350,15 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     wellsGraph_.resize(grid.numCells());
     const auto& cpgdim = grid.logicalCartesianSize();
     // create compressed lookup from cartesian.
-    std::vector<Opm::WellConstPtr> wells  = eclipseState->getSchedule()->getWells();
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
+
     for( int i=0; i < grid.numCells(); ++i )
     {
         cartesian_to_compressed[grid.globalCell()[i]] = i;
     }
-    // We assume that we know all the wells.
-    for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
-        Opm::WellConstPtr well = (*wellIter);
-        std::set<int> well_indices;
-        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
-        for (size_t c=0; c<completionSet->size(); c++) {
-            Opm::CompletionConstPtr completion = completionSet->get(c);
-            int i = completion->getI();
-            int j = completion->getJ();
-            int k = completion->getK();
-            int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
-            int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx >= 0 ) // Ignore completions in inactive cells.
-            {
-                well_indices.insert(compressed_idx);
-            }
-        }
-        addCompletionSetToGraph(well_indices);
-    }
-#endif
-}
-
-void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
-{
-#if HAVE_OPM_PARSER
-    if( ! wellsGraph_.size() )
-    {
-        // No wells to be processed
-        return;
-    }
-    // create compressed lookup from cartesian.
-    const auto& cpgdim = grid_.logicalCartesianSize();
-    std::vector<Opm::WellConstPtr> wells  = eclipseState_->getSchedule()->getWells();
-    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    for( int i=0; i < grid_.numCells(); ++i )
-    {
-        cartesian_to_compressed[grid_.globalCell()[i]] = i;
-    }
-    int last_time_step = eclipseState_->getSchedule()->getTimeMap()->size()-1;
-    // Check that all completions of a well have ended up on one process.
-    // If that is not the case for well then move them manually to the
-    // process that already has the most completions on it.
-    for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
-        Opm::WellConstPtr well = (*wellIter);
-        std::set<int> well_indices;
-        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
-        if( ! completionSet->size() )
-        {
-            continue;
-        }
-        std::map<int,std::size_t> no_completions_on_proc;
-        for ( size_t c = 0; c < completionSet->size(); c++  )
-        {
-            Opm::CompletionConstPtr completion = completionSet->get(c);
-            int i = completion->getI();
-            int j = completion->getJ();
-            int k = completion->getK();
-            int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
-            int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx < 0 ) // ignore completions in inactive cells
-            {
-                continue;
-            }
-            ++no_completions_on_proc[parts[compressed_idx]];
-        }
-        if ( no_completions_on_proc.size() > 1 )
-        {
-            // partition with the most completions on it becomes new owner
-            int new_owner = std::max_element(no_completions_on_proc.begin(),
-                                             no_completions_on_proc.end(),
-                                             [](const std::pair<int,std::size_t>& p1,
-                                                const std::pair<int,std::size_t>& p2){
-                                                 return ( p1.second > p2.second );
-                                             })->first;
-            std::cout << "Manually moving well " << well->name() << " to partition "
-                      << new_owner << std::endl;
-             for ( size_t c = 0; c < completionSet->size(); c++ )
-             {
-                 Opm::CompletionConstPtr completion = completionSet->get(c);
-                 int i = completion->getI();
-                 int j = completion->getJ();
-                 int k = completion->getK();
-                 int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
-                 int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-                 if ( compressed_idx < 0 ) // ignore completions in inactive cells
-                 {
-                     continue;
-                 }
-                 parts[compressed_idx] = new_owner;
-             }
-        }
-    }
+    well_indices_.init(*eclipseState, cpgdim, cartesian_to_compressed);
+    std::vector<int>().swap(cartesian_to_compressed); // free memory.
+    addCompletionSetToGraph();
 #endif
 }
 

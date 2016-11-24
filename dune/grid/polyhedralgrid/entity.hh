@@ -158,7 +158,6 @@ namespace Dune
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Traits::ExtraData ExtraData;
 
-
     using Base::seed_;
   public:
     typedef typename Base :: EntitySeed EntitySeed;
@@ -199,7 +198,6 @@ namespace Dune
       typedef typename Traits::template Codim< cd >::EntityImpl        EntityImpl;
       return EntityPointerImpl( EntityImpl( data(), data()->template subEntitySeed< cd >( seed_, i ) ) );
     }
-
   };
 
 

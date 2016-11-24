@@ -85,10 +85,9 @@ namespace Dune
             return p_coord[0] + initial_split[0]*(p_coord[1] + initial_split[1]*p_coord[2]);
         }
 
-
-        template <class GridView>
-        void colourMyComponentRecursive(const GridView& gridView,
-                                        const CpGrid::Codim<0>::Entity& c,
+        template<class Entity>
+        void colourMyComponentRecursive(const CpGrid& grid,
+                                        const Entity& c,
                                         const int colour,
                                         const std::vector<int>& cell_part,
                                         std::vector<int>& cell_colour)
@@ -110,10 +109,9 @@ namespace Dune
             }
         }
 
-
-        template <class GridView>
-        void colourMyComponent(const GridView& gridView,
-                               const CpGrid::Codim<0>::Entity& c,
+        template<class Entity>
+        void colourMyComponent(const CpGrid& grid,
+                               const Entity& c,
                                const int colour,
                                const std::vector<int>& cell_part,
                                std::vector<int>& cell_colour)
@@ -202,7 +200,8 @@ namespace Dune
                    const coord_t& initial_split,
                    int& num_part,
                    std::vector<int>& cell_part,
-                   bool recursive)
+                   bool recursive,
+                   bool ensureConnectivity)
     {
         // Checking that the initial split makes sense (that there may be at least one cell
         // in each expected partition).
@@ -244,7 +243,10 @@ namespace Dune
         cell_part.swap(my_part);
 
         // Check the connectivity, split.
-        ensureConnectedPartitions(grid, num_part, cell_part, recursive);
+        if ( ensureConnectivity )
+        {
+            ensureConnectedPartitions(grid, num_part, cell_part, recursive);
+        }
     }
 
 /// \brief Adds cells to the overlap that just share a point with an owner cell.
