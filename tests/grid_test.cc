@@ -182,7 +182,7 @@ int main(int argc, char** argv )
       }
 #endif
       {
-        Dune::GridPtr< Grid > gridPtr( "dbls_10.msh.dgf" );
+        Dune::GridPtr< Grid > gridPtr( "cube_poly.dgf" );
         testGrid( *gridPtr, "polyhedralgrid" );
       }
     }

@@ -9,13 +9,14 @@
 #include <dune/common/typetraits.hh>
 #include <dune/common/version.hh>
 
+#include <dune/grid/common/gridfactory.hh>
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
 
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/io/file/dgfparser/blocks/polyhedron.hh>
 #endif
 
-#include <dune/grid/polyhedralgrid/grid.hh>
+#include <dune/grid/polyhedralgrid/gridfactory.hh>
 
 #if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
@@ -274,148 +275,68 @@ namespace Dune
         DUNE_THROW( DGFException, "Not in DGF format" );
       }
 
-      std::vector< std::vector< double > > nodes;
+      typedef std::vector< std::vector< double > > CoordinateVectorType;
+      CoordinateVectorType nodes;
       const int vtxOfs = readVertices( input, nodes );
 
-      std::vector< std::vector< int > > faces = readPolygons ( input, nodes.size(), vtxOfs );
-      std::vector< std::vector< int > > cells = readPolyhedra( input, faces.size() );
+      typedef std::vector< std::vector< int > > IndexVectorType;
+      IndexVectorType faces = readPolygons ( input, nodes.size(), vtxOfs );
+      IndexVectorType cells = readPolyhedra( input, faces.size() );
 
       if( cells.empty() )
       {
         DUNE_THROW( DGFException, "Polyhedron block not found" );
       }
 
-      const auto sumSize = [] ( std::size_t s, const std::vector< int > &v ) { return s + v.size(); };
-      const std::size_t numFaceNodes = std::accumulate( faces.begin(), faces.end(), std::size_t( 0 ), sumSize );
-      const std::size_t numCellFaces = std::accumulate( cells.begin(), cells.end(), std::size_t( 0 ), sumSize );
+      typedef GridFactory< Grid > GridFactoryType;
+      typedef typename GridFactoryType :: Coordinate Coordinate ;
 
-      typename Grid::UnstructuredGridPtr ug = Grid::allocateGrid( cells.size(), faces.size(), numFaceNodes, numCellFaces, nodes.size() );
+      GridFactoryType gridFactory;
 
-      // copy faces
+      const int nNodes = nodes.size();
+      Coordinate node( 0 );
+      for( int i=0; i<nNodes; ++i )
       {
-#ifndef NDEBUG
-        std::map< std::vector< int >, std::vector< int > > faceMap;
-#endif
+        for( int d=0; d<Coordinate::dimension; ++d )
+          node[ d ] = nodes[ i ][ d ];
 
-        const int nFaces = faces.size();
-        // set all face_cells values to -2 as default
-        std::fill( ug->face_cells, ug->face_cells + 2*nFaces, -1 );
+        gridFactory.insertVertex( node );
+      }
+      //nodes.swap( CoordinateVectorType() );
 
-        int facepos = 0;
-        std::vector< int > faceVertices;
-        faceVertices.reserve( 30 );
-        for( int face = 0; face < nFaces; ++face )
-        {
-          //std::cout << "face " << face << ": ";
-          faceVertices.clear();
-          ug->face_nodepos[ face ] = facepos;
-          const int nVertices = faces[ face ].size();
-          for( int vx = 0; vx < nVertices; ++vx, ++facepos )
-          {
-            //std::cout << " " << faces[ face ][ vx ];
-            ug->face_nodes[ facepos ] = faces[ face ][ vx ];
-            faceVertices.push_back( faces[ face ][ vx ] );
-          }
-          //std::cout << std::endl;
+      // insert faces with type none/dim-1
+      GeometryType type;
+      type.makeNone( Grid::dimension - 1 );
+      std::vector< unsigned int > numbers;
 
-#ifndef NDEBUG
-          // sort vertices
-          std::sort( faceVertices.begin(), faceVertices.end() );
-          // make sure each face only exists once
-          faceMap[ faceVertices ].push_back( face );
-          assert( faceMap[ faceVertices ].size() == 1 );
-#endif
-        }
-        ug->face_nodepos[ nFaces ] = facepos ;
+      const int nFaces = faces.size();
+      for(int i = 0; i < nFaces; ++ i )
+      {
+        // copy values into appropriate data type
+        std::vector<int>& face = faces[ i ];
+        numbers.resize( face.size() );
+        std::copy( face.begin(), face.end(), numbers.begin() );
+        gridFactory.insertElement( type, numbers );
       }
 
-      // copy cells
+      // free memory
+      //faces.swap( IndexVectorType() );
+
+      // insert cells with type none/dim
+      type.makeNone( Grid::dimension );
+
+      const int nCells = cells.size();
+      for(int i = 0; i < nCells; ++ i )
       {
-        const int nCells = cells.size();
-        int cellpos = 0;
-        for( int cell = 0; cell < nCells; ++cell )
-        {
-          //std::cout << "Cell " << cell << ": ";
-          ug->cell_facepos[ cell ] = cellpos;
-          const int nFaces = cells[ cell ].size();
-          for( int f = 0; f < nFaces; ++f, ++cellpos )
-          {
-            const int face = cells[ cell ][ f ];
-            // std::cout << " " << face ;
-            ug->cell_faces[ cellpos ] = face;
-
-            // TODO find cells for each face
-            if( ug->face_cells[ 2*face ] == -1 )
-            {
-              ug->face_cells[ 2*face ] = cell;
-            }
-            else // if ( ug->face_cells[ 2*face+1 ] == -1 )
-            {
-              //assert( ug->face_cells[ 2*face+1 ] == -1 );
-              ug->face_cells[ 2*face+1 ] = cell;
-            }
-          }
-          //std::cout << std::endl;
-        }
-        ug->cell_facepos[ nCells ] = cellpos ;
+        // copy values into appropriate data type
+        std::vector<int>& cell = cells[ i ];
+        numbers.resize( cell.size() );
+        std::copy( cell.begin(), cell.end(), numbers.begin() );
+        gridFactory.insertElement( type, numbers );
       }
+      //cells.swap( IndexVectorType() );
 
-      // copy node coordinates
-      {
-        const int nNodes = nodes.size();
-        int nodepos = 0;
-        for( int vx = 0 ; vx < nNodes; ++vx )
-        {
-          for( int d=0; d<dim; ++d, ++nodepos )
-            ug->node_coordinates[ nodepos ] = nodes[ vx ][ d ];
-        }
-      }
-
-      /*
-      for( int i=0; i<int(faces.size() ); ++i)
-      {
-        std::cout << "face "<< i<< " connects to " << ug->face_cells[ 2*i ] << " " <<
-          ug->face_cells[ 2*i+1] << std::endl;
-      }
-      */
-
-      // free cell face tag since it's not a cartesian grid
-      if( ug->cell_facetag )
-      {
-        std::free( ug->cell_facetag );
-        ug->cell_facetag = nullptr ;
-        for( int i=0; i<3; ++i ) ug->cartdims[ i ] = 0;
-      }
-
-      // compute geometric quntities like cell volume and face normals
-      Grid::computeGeometry( ug );
-
-      // check normal direction
-      {
-        typedef Dune::FieldVector< double, dim > Coordinate;
-        const int faces = ug->number_of_faces;
-        for( int face = 0 ; face < faces; ++face )
-        {
-          const int a = ug->face_cells[ 2*face     ];
-          const int b = ug->face_cells[ 2*face + 1 ];
-          Coordinate centerDiff( 0 );
-          Coordinate normal( 0 );
-          for( int d=0; d<dim; ++d )
-          {
-            centerDiff[ d ] = ug->cell_centroids[ b*dim + d ] - ug->cell_centroids[ a*dim + d ];
-            normal[ d ] = ug->face_normals[ face*dim + d ];
-          }
-
-          // if diff and normal point in different direction, flip faces
-          if( centerDiff * normal > 0 )
-          {
-            ug->face_cells[ 2*face     ] = b;
-            ug->face_cells[ 2*face + 1 ] = a;
-          }
-        }
-      }
-
-      grid_ = new Grid( std::move( ug ) );
+      grid_ = gridFactory.createGrid();
     }
 
     Grid *grid_;
