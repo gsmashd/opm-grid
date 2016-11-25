@@ -402,9 +402,11 @@ const int* cartDims(const Dune::CpGrid& grid);
 /// in the underlying structured grid.
 const int*  globalCell(const Dune::CpGrid&);
 
+#if HAVE_OPM_PARSER
 /// Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actum from the dune CPGrid
 EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& inputGrid);
+#endif
 
 CellCentroidTraits<Dune::CpGrid>::IteratorType
 beginCellCentroids(const Dune::CpGrid& grid);

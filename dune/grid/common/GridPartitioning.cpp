@@ -85,8 +85,8 @@ namespace Dune
             return p_coord[0] + initial_split[0]*(p_coord[1] + initial_split[1]*p_coord[2]);
         }
 
-        template<class Entity>
-        void colourMyComponentRecursive(const CpGrid& grid,
+        template<class GridView, class Entity>
+        void colourMyComponentRecursive(const GridView& gridView,
                                         const Entity& c,
                                         const int colour,
                                         const std::vector<int>& cell_part,
@@ -109,14 +109,14 @@ namespace Dune
             }
         }
 
-        template<class Entity>
-        void colourMyComponent(const CpGrid& grid,
+        template<class GridView, class Entity>
+        void colourMyComponent(const GridView& gridView,
                                const Entity& c,
                                const int colour,
                                const std::vector<int>& cell_part,
                                std::vector<int>& cell_colour)
         {
-            typedef CpGrid::LeafIntersectionIterator NbIter;
+            typedef typename GridView:: IntersectionIterator NbIter;
             typedef std::pair<int, std::pair<NbIter, NbIter> > VertexInfo;
             std::stack<VertexInfo> v_stack;
             const auto& ix = gridView.indexSet();

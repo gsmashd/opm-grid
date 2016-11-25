@@ -31,8 +31,12 @@
 #endif
 
 #include <dune/common/parallel/mpicollectivecommunication.hh>
+
+#if HAVE_OPM_PARSER
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
+#endif
+
 namespace Dune
 {
 namespace cpgrid
@@ -53,6 +57,12 @@ public:
     /// \brief The iterator type (always const).
     typedef const_iterator iterator;
 
+#if HAVE_OPM_PARSER
+    typedef Opm::EclipseState EclipseState;
+#else
+    typedef int EclipseState;
+#endif
+
     WellConnections() = default;
 
     /// \brief Constructor
@@ -61,7 +71,7 @@ public:
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
-    WellConnections(const Opm::EclipseState& eclipseState,
+    WellConnections(const EclipseState& eclipseState,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
 
@@ -71,7 +81,7 @@ public:
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
-    void init(const Opm::EclipseState& eclipseState,
+    void init(const EclipseState& eclipseState,
               const std::array<int, 3>& cartesianSize,
               const std::vector<int>& cartesian_to_compressed);
 
@@ -107,6 +117,8 @@ private:
     std::vector<std::set<int> > well_indices_;
 };
 
+
+#if HAVE_OPM_PARSER
 /// \brief Computes wells assigned to processes.
 ///
 /// Computes for all processes all indices of wells that
@@ -133,6 +145,8 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
                         const Opm::EclipseState& eclipseState,
                         const CollectiveCommunication<MPI_Comm>& cc,
                         int root);
+#endif
+
 #endif
 } // end namespace cpgrid
 } // end namespace Dune

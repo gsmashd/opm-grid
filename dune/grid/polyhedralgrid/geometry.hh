@@ -42,6 +42,12 @@ namespace Dune
     typedef typename Grid::Traits::ExtraData  ExtraData;
     typedef typename Grid::Traits::template Codim<codimension>::EntitySeed EntitySeed;
 
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+    typedef Dune::Impl::FieldMatrixHelper< double >  MatrixHelperType;
+#else
+    typedef Dune::GenericGeometry::MatrixHelper< DuneCoordTraits<double> >  MatrixHelperType;
+#endif
+
     explicit PolyhedralGridBasicGeometry ( ExtraData data )
     : data_( data ),
       seed_( )
@@ -136,12 +142,11 @@ namespace Dune
         LocalCoordinate x = refElement.position(0,0);
         LocalCoordinate dx;
         do {
-          using namespace GenericGeometry;
           // DF^n dx^n = F^n, x^{n+1} -= dx^n
           JacobianTransposed JT = jacobianTransposed(x);
           GlobalCoordinate z = global(x);
           z -= y;
-          MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<mydimension,coorddimension>(JT, z, dx );
+          MatrixHelperType::template xTRightInvA<mydimension,coorddimension>(JT, z, dx );
           x -= dx;
         } while (dx.two_norm2() > epsilon*epsilon);
         return x;

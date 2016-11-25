@@ -637,7 +637,7 @@ namespace Dune
         template<class DataHandle>
         std::pair<bool, std::unordered_set<std::string> >
         loadBalance(DataHandle& data,
-                    const Opm::EclipseState* ecl,
+                    EclipseStateConstPtr* ecl,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
