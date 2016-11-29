@@ -63,6 +63,12 @@ namespace Dune
     template< class Entity >
     IndexType subIndex ( const Entity &entity, int i, unsigned int codim ) const
     {
+      return this->template subIndex< Entity::codimension >( entity, i, codim );
+    }
+
+    template< int cd >
+    IndexType subIndex ( const typename Traits::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
+    {
       if( codim == 0 )
         return index( entity );
       else if ( codim == 1 )
