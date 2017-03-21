@@ -42,10 +42,10 @@ namespace Dune
     typedef typename Grid::Traits::ExtraData  ExtraData;
     typedef typename Grid::Traits::template Codim<codimension>::EntitySeed EntitySeed;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY,2,5)
     typedef Dune::Impl::FieldMatrixHelper< double >  MatrixHelperType;
 #else
-    typedef Dune::GenericGeometry::MatrixHelper< DuneCoordTraits<double> >  MatrixHelperType;
+    typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits<double> >  MatrixHelperType;
 #endif
 
     explicit PolyhedralGridBasicGeometry ( ExtraData data )

@@ -104,10 +104,10 @@ namespace Dune
             /// Type of the inverse of the transposed Jacobian matrix
             typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY,2,5)
             typedef Dune::Impl::FieldMatrixHelper< double >  MatrixHelperType;
 #else
-            typedef Dune::GenericGeometry::MatrixHelper< DuneCoordTraits<double> >  MatrixHelperType;
+            typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits<double> >  MatrixHelperType;
 #endif
             /// @brief Construct from centroid, volume (1- and 0-moments) and
             ///        corners.
