@@ -154,7 +154,8 @@ int main(int argc, char** argv )
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
 
-    std::stringstream dgfFile;
+    std::string dgfFile("cube_poly.dgf");
+    /*
     // create unit cube with 8 cells in each direction
     dgfFile << "DGF" << std::endl;
     dgfFile << "Interval" << std::endl;
@@ -162,6 +163,7 @@ int main(int argc, char** argv )
     dgfFile << "1 1 1" << std::endl;
     dgfFile << "8 8 8" << std::endl;
     dgfFile << "#" << std::endl;
+    */
 
 #if HAVE_OPM_PARSER
     Opm::Parser parser;
@@ -177,8 +179,8 @@ int main(int argc, char** argv )
       Grid grid(deck, porv);
       testGrid( grid, "polyhedralgrid" );
 #endif
-      //Dune::GridPtr< Grid > gridPtr( dgfFile );
-      //testGrid( *gridPtr, "polyhedralgrid-dgf" );
+      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
 
     // test CpGrid

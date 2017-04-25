@@ -17,14 +17,15 @@ namespace Dune
   {
   public:
     typedef PolyhedralGrid<  dim, dimworld > Grid;
-    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename std::remove_const< Grid >::type::Traits Traits;
     typedef typename Traits::Index  IdType;
 
     typedef PolyhedralGridIdSet< dim, dimworld > This;
     typedef IdSet< Grid, PolyhedralGridIdSet< dim, dimworld >, IdType > Base;
 
     PolyhedralGridIdSet (const Grid& grid)
-        : grid_(grid)
+        : grid_( grid ),
+          globalCellPtr_( grid_.globalCellPtr() )
     {}
 
     //! id meethod for entity and specific codim
@@ -32,8 +33,9 @@ namespace Dune
     IdType id ( const typename Traits::template Codim< codim >::Entity &entity ) const
     {
       const int index = entity.seed().index();
-      if (codim == 0)
-        return grid_.globalCell()[ index ];
+      // in case
+      if (codim == 0 && globalCellPtr_ )
+        return globalCellPtr_[ index ];
       else
         return index;
     }
@@ -80,6 +82,7 @@ namespace Dune
 
   protected:
     const Grid& grid_;
+    const int* globalCellPtr_;
   };
 
 } // namespace Dune
