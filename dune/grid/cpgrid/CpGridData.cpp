@@ -80,7 +80,7 @@ void freeInterfaces(InterfaceMap& map)
 }
 
 template<class InterfaceMap>
-void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+void freeInterfaces(std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
                     interfaces)
 {
     freeInterfaces(std::get<0>(interfaces));
@@ -341,10 +341,10 @@ struct Converter
     typedef Combine<Interior,Border> InteriorBorder;
     typedef Combine<Overlap,Front> OverlapFront;
 
-    typedef tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap,
-                  AllSet<PartitionType> > SourceTuple;
-    typedef tuple<InteriorBorder, AllSet<PartitionType>, OverlapFront, AllSet<PartitionType>,
-                  AllSet<PartitionType> > DestinationTuple;
+    typedef std::tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap,
+                       AllSet<PartitionType> > SourceTuple;
+    typedef std::tuple<InteriorBorder, AllSet<PartitionType>, OverlapFront, AllSet<PartitionType>,
+                       AllSet<PartitionType> > DestinationTuple;
 };
 
 /**
@@ -355,7 +355,7 @@ struct Converter
  */
 template<std::size_t i, class InterfaceMap>
 void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
-             tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+             std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
 {
     typedef typename std::map<int,std::pair<std::size_t,std::size_t> >::const_iterator Iter;
@@ -377,7 +377,7 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
  */
 template<class InterfaceMap>
 void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
-             tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+             std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
 {
     reserve<0>(sizes, interfaces);
