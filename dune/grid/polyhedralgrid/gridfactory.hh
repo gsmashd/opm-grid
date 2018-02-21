@@ -84,6 +84,7 @@ namespace Dune
       else // use ReferenceElement to insert faces
       {
 
+
       }
     }
 
@@ -91,6 +92,7 @@ namespace Dune
                                const std::vector<unsigned int>& vertices,
                                const shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >& elementParametrization)
     {
+      std::cerr << "Warning: elementParametrization is being ignored in insertElement!" << std::endl;
       insertElement( type, vertices );
     }
 

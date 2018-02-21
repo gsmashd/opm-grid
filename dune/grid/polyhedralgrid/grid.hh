@@ -25,6 +25,7 @@
 #include <dune/grid/polyhedralgrid/geometry.hh>
 #include <dune/grid/polyhedralgrid/gridview.hh>
 #include <dune/grid/polyhedralgrid/idset.hh>
+#include <dune/grid/polyhedralgrid/polyhedralmesh.hh>
 
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -170,6 +171,8 @@ namespace Dune
     };
 
   public:
+    typedef PolyhedralMesh< dim, dimworld, double, int > PolyhedralMeshType;
+
     typedef std::unique_ptr< UnstructuredGridType, UnstructuredGridDeleter > UnstructuredGridPtr;
 
     static UnstructuredGridPtr
@@ -339,6 +342,7 @@ namespace Dune
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( *gridPtr_ ),
+      polyhedralMesh_( grid_ ),
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -1129,6 +1133,12 @@ namespace Dune
       if( ! seed.isValid() )
         return GlobalCoordinate( 0 );
 
+      const int index = seed.index();
+      const int codim = EntitySeed::codimension;
+      assert( index >= 0 && index < size( codim ) );
+      return polyhedralMesh_.center( index, codim );
+
+      /*
       const int index = GlobalCoordinate :: dimension * seed.index();
       const int codim = EntitySeed::codimension;
       assert( index >= 0 && index < size( codim ) * GlobalCoordinate :: dimension );
@@ -1150,6 +1160,7 @@ namespace Dune
         DUNE_THROW(InvalidStateException,"codimension not implemented");
         return GlobalCoordinate( 0 );
       }
+      */
     }
 
     GlobalCoordinate copyToGlobalCoordinate( const double* coords ) const
@@ -1174,20 +1185,7 @@ namespace Dune
       {
         const int index = seed.index();
         assert( seed.isValid() );
-
-        if( codim == 0 )
-        {
-          return grid_.cell_volumes[ index ];
-        }
-        else if ( codim == 1 )
-        {
-          return grid_.face_areas[ index ];
-        }
-        else
-        {
-          DUNE_THROW(InvalidStateException,"codimension not implemented");
-          return 0.0;
-        }
+        return polyhedralMesh_.volume( index, codim );
       }
     }
 
@@ -1471,6 +1469,8 @@ namespace Dune
   protected:
     UnstructuredGridPtr gridPtr_;
     const UnstructuredGridType& grid_;
+
+    PolyhedralMeshType polyhedralMesh_;
 
     CollectiveCommunication comm_;
     std::array< int, 3 > cartDims_;
