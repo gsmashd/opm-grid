@@ -21,8 +21,7 @@ namespace Dune
     typedef Dune::FieldVector< ctype, dimworld > GlobalCoordinate ;
 
     PolyhedralMesh ()
-      : coordinates_(),
-        centroids_( 2 ),
+      : centroids_( dim+1 ),
         faceNormals_(),
         subEntity_( 1 ),
         subEntityPos_( 1, std::vector<Index>(1, Index(0)) ),
@@ -34,8 +33,7 @@ namespace Dune
 
     template <class UnstructuredGrid>
     PolyhedralMesh (const UnstructuredGrid& ug)
-      : coordinates_(),
-        centroids_( 2 ),
+      : centroids_( dim+1 ),
         faceNormals_(),
         subEntity_( 1 ),
         subEntityPos_( 1, std::vector<Index>(1, Index(0)) ),
@@ -44,7 +42,7 @@ namespace Dune
         volumes_( dim-1 ),
         geomTypes_()
     {
-      coordinates_.resize( ug.number_of_nodes );
+      centroids_[ dim ].resize( ug.number_of_nodes );
       centroids_[ 0 ].resize( ug.number_of_cells );
       volumes_[ 0 ].resize( ug.number_of_cells );
 
@@ -58,7 +56,7 @@ namespace Dune
       int id = 0;
       for( int i=0; i<ug.number_of_nodes; ++i )
       {
-        GlobalCoordinate& coord = coordinates_[ i ];
+        GlobalCoordinate& coord = coordinates()[ i ];
         for(int d=0; d<dimworld; ++d, ++id )
           coord[ d ] = ug.node_coordinates[ id ];
       }
@@ -76,9 +74,13 @@ namespace Dune
       for( int i=0; i<ug.number_of_faces; ++i )
       {
         volumes_[ 1 ][ i ] = ug.face_areas[ i ];
+        GlobalCoordinate& center = centroids_[ 1 ][ i ];
         GlobalCoordinate& normal = faceNormals_[ i ];
         for(int d=0; d<dimworld; ++d, ++id )
+        {
+          center[ d ] = ug.face_centroids[ id ];
           normal[ d ] = ug.face_normals[ id ];
+        }
       }
 
       topology_[ 1 ].resize( ug.face_nodepos[ug.number_of_faces] );
@@ -89,23 +91,55 @@ namespace Dune
 
       faceNeighbors_.resize( 2*ug.number_of_faces );
       std::copy_n( ug.face_cells, 2*ug.number_of_faces, faceNeighbors_.begin() );
+
+      int maxVx = 0 ;
+      int minVx = std::numeric_limits<int>::max();
+
+      const int numCells = ug.number_of_cells;
+      topology_[ 0 ].reserve( numCells * 8 );
+      topologyPos_[ 0 ].resize( numCells + 1 );
+      topologyPos_[ 0 ][ 0 ] = 0;
+      for (int c = 0; c < numCells; ++c)
+      {
+        topologyPos_[ 0 ][ c ] = topology_[ 0 ].size();
+        std::set<int> cell_pts;
+        for (int hf=ug.cell_facepos[ c ]; hf < ug.cell_facepos[c+1]; ++hf)
+        {
+           int f = ug.cell_faces[ hf ];
+           const int* fnbeg = ug.face_nodes + ug.face_nodepos[f];
+           const int* fnend = ug.face_nodes + ug.face_nodepos[f+1];
+           cell_pts.insert(fnbeg, fnend);
+        }
+
+        for( const auto& vertex : cell_pts )
+        {
+          topology_[ 0 ].push_back( vertex );
+        }
+        maxVx = std::max( maxVx, int( cell_pts.size() ) );
+        minVx = std::min( minVx, int( cell_pts.size() ) );
+      }
+      topologyPos_[ 0 ][ numCells ] = topology_[ 0 ].size();
     }
 
     /** \brief return number of cells in the mesh */
-    Index size( const int codim ) const { return topology_[ codim ].size(); }
+    Index size( const int codim ) const { return centroids_[ codim ].size(); }
 
-    GlobalCoordinate& coordinate( const Index idx ) { return coordinates_[ idx ]; }
-    const GlobalCoordinate& coordinate( const Index idx ) const { return coordinates_[ idx ]; }
+    GlobalCoordinate& coordinate( const Index idx ) { return coordinates()[ idx ]; }
+    const GlobalCoordinate& coordinate( const Index idx ) const { return coordinates()[ idx ]; }
 
     std::pair< Index, Index* > entity( const Index en, const int codim )
     {
       return std::make_pair( topologyPos_[ codim ][ en+1 ] - topologyPos_[ codim ][ en ], topology_[ codim ].data() + topologyPos_[ codim ][ en ] );
     }
 
-    std::pair< Index, Index* > subEntity( const Index en, const int i, const int codim )
+    /** \brief return sub entities, i.e. corners of a face or element
+     *  \param entity entity index, such as face number or element number
+     *  \param i      i-th vertex requested
+     *  \param codim  codimension of the entity
+     * */
+    Index subEntity( const Index entity, const int i, const int codim ) const
     {
-      // TODO:
-      return std::make_pair( topologyPos_[ codim ][ en+1 ] - topologyPos_[ codim ][ en ], topology_[ codim ].data() + topologyPos_[ codim ][ en ] );
+      return topology_[ codim ][ topologyPos_[ codim ][ entity ] + i ];
     }
 
     std::pair< Index, Index* > element( const Index en )
@@ -140,7 +174,7 @@ namespace Dune
 
     void insertVertex( const GlobalCoordinate& vertex )
     {
-      coordinates_.push_back( vertex );
+      coordinates().push_back( vertex );
     }
 
     void insertElement( const GeometryType& type, const std::vector<unsigned int>& items )
@@ -171,6 +205,9 @@ namespace Dune
     }
 
   protected:
+    std::vector< GlobalCoordinate >& coordinates() { return centroids_[ dim ]; }
+    const std::vector< GlobalCoordinate >& coordinates() const { return centroids_[ dim ]; }
+
     void insertItems( const std::vector<unsigned int>& items,
                       std::vector< Index >& entities,
                       std::vector< Index >& entityPos )
@@ -187,7 +224,6 @@ namespace Dune
         entityPos.push_back( entities.size() );
     }
 
-    std::vector< GlobalCoordinate > coordinates_;
     std::vector< std::vector< GlobalCoordinate > > centroids_;
     std::vector< GlobalCoordinate > faceNormals_;
 

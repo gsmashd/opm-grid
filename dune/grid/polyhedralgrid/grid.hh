@@ -413,23 +413,7 @@ namespace Dune
      */
     int size ( int codim ) const
     {
-      if( codim == 0 )
-      {
-        return grid_.number_of_cells;
-      }
-      else if ( codim == 1 )
-      {
-        return grid_.number_of_faces;
-      }
-      else if ( codim == dim )
-      {
-        return grid_.number_of_nodes;
-      }
-      else
-      {
-        std::cerr << "Warning: codimension " << codim << " not available in PolyhedralGrid" << std::endl;
-        return 0;
-      }
+      return polyhedralMesh_.size( codim );
     }
 
     /** \brief obtain number of entites on a level
@@ -915,19 +899,14 @@ namespace Dune
       switch (codim)
       {
         case 0:
-          {
-            const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
-            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
-          }
         case 1:
           {
-            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i];
-            return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+            const int vxIndex = polyhedralMesh_.subEntity( seed.index(), i, codim );
+            return polyhedralMesh_.coordinate( vxIndex );
           }
         case dim:
           {
-            const int coordIndex = GlobalCoordinate :: dimension * seed.index();
-            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+            return polyhedralMesh_.coordinate( seed.index() );
           }
       }
       return GlobalCoordinate( 0 );
