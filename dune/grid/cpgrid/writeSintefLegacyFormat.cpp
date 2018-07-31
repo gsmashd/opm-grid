@@ -38,6 +38,7 @@
 #include "config.h"
 #endif
 
+#include <array>
 #include <fstream>
 #include <vector>
 
@@ -54,7 +55,7 @@ namespace Dune
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const cpgrid::OrientedEntityTable<1, 0>& f2c,
                        const Opm::SparseTable<int>& f2p,
-                       const std::vector<array<int,8> >& c2p,
+                       const std::vector<std::array<int,8> >& c2p,
                        const int num_points);
         void writeGeom(std::ostream& geom,
                        const cpgrid::DefaultGeometryPolicy& gpol,
@@ -115,7 +116,7 @@ namespace Dune
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const cpgrid::OrientedEntityTable<1, 0>& f2c,
                        const Opm::SparseTable<int>& f2p,
-                       const std::vector<array<int,8> >& /*c2p */,
+                       const std::vector<std::array<int,8> >& /*c2p */,
                        const int num_points)
         {
             // Write header
